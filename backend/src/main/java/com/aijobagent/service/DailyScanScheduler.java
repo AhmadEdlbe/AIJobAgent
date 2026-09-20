@@ -10,9 +10,10 @@ public class DailyScanScheduler {
     private static final Logger log = LoggerFactory.getLogger(DailyScanScheduler.class);
     private final JobSearchService jobSearchService;
     private final ProfileService profileService;
+    private final FcmPushService fcmPushService;
 
-    public DailyScanScheduler(JobSearchService jobSearchService, ProfileService profileService){
-        this.jobSearchService=jobSearchService; this.profileService=profileService;
+    public DailyScanScheduler(JobSearchService jobSearchService, ProfileService profileService, FcmPushService fcmPushService){
+        this.jobSearchService=jobSearchService; this.profileService=profileService; this.fcmPushService=fcmPushService;
     }
 
     // Every day at 9am
@@ -25,7 +26,10 @@ public class DailyScanScheduler {
             var jobs = jobSearchService.scan(req, profile);
             long high = jobs.stream().filter(j-> j.matchPercentage()>=75).count();
             log.info("Daily scan completed: {} jobs, {} high match", jobs.size(), high);
-            // TODO: send push via FCM if high>0
+            if (high > 0) {
+                // In single-user mode device token would be stored via /profile/fcm-token; for now log + stub push
+                fcmPushService.sendHighMatchPush("singleton-device", (int) high);
+            }
         }catch(Exception e){
             log.error("Daily scan failed {}", e.getMessage(), e);
         }

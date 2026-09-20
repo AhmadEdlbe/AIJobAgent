@@ -25,17 +25,21 @@ public class JobSearchService {
     private final OpenAiService openAiService;
     private final MappingService mapper;
     private final List<JobProvider> providers;
-    private final ExecutorService executor = Executors.newFixedThreadPool(4);
+    private final ExecutorService executor = Executors.newFixedThreadPool(8);
 
     public JobSearchService(JobRepository jobRepository, OpenAiService openAiService, MappingService mapper,
                             RemoteOkProvider remoteOkProvider,
                             WeWorkRemotelyProvider wwrProvider,
                             WellfoundProvider wellfoundProvider,
-                            MockProvider mockProvider) {
+                            MockProvider mockProvider,
+                            LinkedInProvider linkedInProvider,
+                            IndeedProvider indeedProvider,
+                            GlassdoorProvider glassdoorProvider,
+                            CompanyCareerPageProvider companyProvider) {
         this.jobRepository = jobRepository;
         this.openAiService = openAiService;
         this.mapper = mapper;
-        this.providers = List.of(remoteOkProvider, wwrProvider, wellfoundProvider, mockProvider);
+        this.providers = List.of(remoteOkProvider, wwrProvider, wellfoundProvider, mockProvider, linkedInProvider, indeedProvider, glassdoorProvider, companyProvider);
     }
 
     public List<JobDto> scan(ScanRequest req, UserProfileDto profile) {

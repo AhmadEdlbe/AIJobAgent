@@ -4,8 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.aijobagent.domain.model.DashboardStats
 import com.example.aijobagent.domain.model.Job
-import com.example.aijobagent.domain.repository.ApplicationRepository
-import com.example.aijobagent.domain.repository.JobRepository
+import com.example.aijobagent.domain.usecase.GetDashboardStatsUseCase
+import com.example.aijobagent.domain.usecase.GetJobsUseCase
+import com.example.aijobagent.domain.usecase.ScanJobsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -24,16 +25,17 @@ data class DashboardUiState(
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val appRepo: ApplicationRepository,
-    private val jobRepo: JobRepository
+    private val getDashboardStats: GetDashboardStatsUseCase,
+    private val getJobs: GetJobsUseCase,
+    private val scanJobsUseCase: ScanJobsUseCase
 ) : ViewModel() {
 
     private val _isScanning = MutableStateFlow(false)
     private val _error = MutableStateFlow<String?>(null)
 
     val uiState: StateFlow<DashboardUiState> = combine(
-        appRepo.getDashboardStats(),
-        jobRepo.getHighMatchJobs(),
+        getDashboardStats(),
+        getJobs.highMatch(),
         _isScanning,
         _error
     ) { stats, jobs, scanning, err ->
@@ -46,7 +48,7 @@ class DashboardViewModel @Inject constructor(
             _isScanning.value = true
             _error.value = null
             try {
-                jobRepo.scanJobs()
+                scanJobsUseCase()
             } catch (e: Exception) {
                 _error.value = e.message ?: "Scan failed"
             } finally {

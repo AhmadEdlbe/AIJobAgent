@@ -1,5 +1,7 @@
 package com.example.aijobagent.presentation.dashboard
 
+import android.Manifest
+import android.os.Build
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,7 +15,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.example.aijobagent.presentation.jobs.JobCard
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun DashboardScreen(
     onJobClick: (String) -> Unit,
@@ -21,12 +27,19 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    // POST_NOTIFICATIONS handling via Accompanist
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        val permissionState = rememberPermissionState(Manifest.permission.POST_NOTIFICATIONS)
+        LaunchedEffect(Unit) {
+            if (!permissionState.status.isGranted) permissionState.launchPermissionRequest()
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("Dashboard", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(16.dp))
 
-        // Stats grid
+        // Stats grid — adaptive, includes pending approvals per spec workflow
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             StatCard("Total Jobs", state.stats.totalJobsFound.toString(), Modifier.weight(1f))
             StatCard("High Match", state.stats.highMatchJobs.toString(), Modifier.weight(1f))
@@ -36,6 +49,15 @@ fun DashboardScreen(
             StatCard("Applied", state.stats.applicationsSent.toString(), Modifier.weight(1f))
             StatCard("Interviews", state.stats.interviews.toString(), Modifier.weight(1f))
             StatCard("Offers", state.stats.offers.toString(), Modifier.weight(1f))
+        }
+        if (state.stats.pendingApprovals > 0) {
+            Spacer(Modifier.height(12.dp))
+            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
+                Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("Pending Approval", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                    Text(state.stats.pendingApprovals.toString(), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                }
+            }
         }
         Spacer(Modifier.height(16.dp))
 

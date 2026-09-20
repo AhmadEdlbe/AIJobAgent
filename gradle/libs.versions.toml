@@ -47,6 +47,8 @@ material = "1.14.0"
 biometric = "1.2.0-alpha05"
 securityCrypto = "1.1.0-alpha06"
 workManager = "2.10.1"
+sqlcipher = "4.5.4"
+pdfboxAndroid = "2.0.27.0"
 lifecycleWorkManager = "2.8.7"
 splashScreen = "1.0.1"
 hiltWork = "1.2.0"
@@ -107,6 +109,8 @@ material = { group = "com.google.android.material", name = "material", version.r
 androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }
+sqlcipher-android = { group = "net.zetetic", name = "android-database-sqlcipher", version.ref = "sqlcipher" }
+pdfbox-android = { group = "com.tom-roush", name = "pdfbox-android", version.ref = "pdfboxAndroid" }
 androidx-lifecycle-work = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleWorkManager" }
 androidx-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashScreen" }
 androidx-hilt-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "hiltWork" }

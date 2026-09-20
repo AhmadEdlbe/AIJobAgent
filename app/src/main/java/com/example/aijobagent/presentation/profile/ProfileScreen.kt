@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -89,29 +90,38 @@ private fun ResumePdfPicker(
     val context = LocalContext.current
     val fileManager = remember { com.example.aijobagent.core.security.EncryptedFileManager(context) }
     var fileName by remember { mutableStateOf(currentPath?.substringAfterLast("/") ?: "") }
+    var isExtracting by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
-            try {
-                val input = context.contentResolver.openInputStream(uri) ?: return@rememberLauncherForActivityResult
-                val bytes = input.readBytes()
-                input.close()
-                val name = "resume_${System.currentTimeMillis()}.pdf"
-                val path = fileManager.saveResumeFile(name, bytes)
-                // Try extract text (simple)
-                val text = try { String(bytes).take(4000) } catch (_: Exception) { null }
-                fileName = name
-                onPicked(path, name, text)
-            } catch (e: Exception) {
-                fileName = "Failed: ${e.message}"
+            isExtracting = true
+            scope.launch {
+                try {
+                    val input = context.contentResolver.openInputStream(uri) ?: return@launch
+                    val bytes = input.readBytes()
+                    input.close()
+                    val name = "resume_${System.currentTimeMillis()}.pdf"
+                    val path = fileManager.saveResumeFile(name, bytes)
+                    // Real PDF text extraction via PdfBox
+                    val extracted = com.example.aijobagent.core.util.PdfTextExtractor.extractFromBytes(context, bytes)
+                    val text = if (extracted.isSuccess) extracted.getOrNull()?.take(8000) else try { String(bytes).take(4000) } catch (_: Exception) { null }
+                    fileName = name + if (extracted.isSuccess) " (text ${text?.length ?: 0} chars)" else " (raw)"
+                    onPicked(path, name, text)
+                } catch (e: Exception) {
+                    fileName = "Failed: ${e.message}"
+                } finally {
+                    isExtracting = false
+                }
             }
         }
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = { launcher.launch("application/pdf") }) {
-                Icon(Icons.Default.PictureAsPdf, contentDescription = null)
+            OutlinedButton(onClick = { launcher.launch("application/pdf") }, enabled = !isExtracting) {
+                if (isExtracting) CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                else Icon(Icons.Default.PictureAsPdf, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Pick Resume PDF")
+                Text(if (isExtracting) "Extracting..." else "Pick Resume PDF")
             }
             if (fileName.isNotBlank()) Text(fileName, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
         }
@@ -126,6 +136,7 @@ private fun BackendSettingsSection(
     val enabled by vm.backendEnabled.collectAsState()
     val url by vm.backendUrl.collectAsState()
     val key by vm.openAiKey.collectAsState()
+    val dbEnc by vm.dbEncrypted.collectAsState()
     var showKey by remember { mutableStateOf(false) }
 
     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
@@ -140,6 +151,7 @@ private fun BackendSettingsSection(
                 Switch(checked = enabled, onCheckedChange = { vm.setBackendEnabled(it) })
             }
             OutlinedTextField(value = url, onValueChange = { vm.setBackendUrl(it) }, label = { Text("Backend URL") }, modifier = Modifier.fillMaxWidth(), enabled = enabled)
+            HorizontalDivider()
             Text("OpenAI API Key (stored encrypted)", style = MaterialTheme.typography.labelMedium)
             OutlinedTextField(
                 value = key,
@@ -150,6 +162,15 @@ private fun BackendSettingsSection(
                 trailingIcon = { TextButton(onClick = { showKey = !showKey }) { Text(if (showKey) "Hide" else "Show") } }
             )
             Text("If key is set, AI matching uses GPT-4o-mini; otherwise heuristic. Backend when enabled proxies OpenAI.", style = MaterialTheme.typography.bodySmall)
+            HorizontalDivider()
+            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Encrypt Database (SQLCipher)", style = MaterialTheme.typography.labelLarge)
+                    Text("AES-256, requires app restart", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(checked = dbEnc, onCheckedChange = { vm.setDbEncrypted(it) })
+            }
+            if (dbEnc) Text("DB will be encrypted on next launch. Plain DB will be migrated.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
         }
     }
 }

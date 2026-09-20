@@ -1,12 +1,82 @@
-# Add project specific R8 rules here.
-# AGP will combine all keep rule files in src/main/keepRules to pass to R8
-#
-# For more details, see
-#   https://d.android.com/r/tools/r8/keep-rules
+# AI Job Agent Proguard/R8 — keep rules for Room, Moshi, Retrofit, Hilt, Navigation3, Serialization, SQLCipher, PDFBox
+# Generated for production release
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Keep all DTOs annotated with JsonClass (Moshi codegen)
+-keep @com.squareup.moshi.JsonClass class * { *; }
+-keep class com.example.aijobagent.data.remote.dto.** { *; }
+-keep class com.example.aijobagent.domain.model.** { *; }
+-keep class com.example.aijobagent.data.remote.api.** { *; }
+-keep class com.squareup.moshi.** { *; }
+-dontwarn com.squareup.moshi.**
+-keep class kotlin.reflect.jvm.internal.** { *; }
+
+# Room
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class *
+-keep @androidx.room.Dao class *
+-dontwarn androidx.room.paging.**
+-keep class com.example.aijobagent.data.local.entity.** { *; }
+-keep class com.example.aijobagent.data.local.AppDatabase { *; }
+
+# Retrofit / OkHttp
+-dontwarn retrofit2.**
+-keep class retrofit2.** { *; }
+-keepattributes Signature, InnerClasses, EnclosingMethod
+-keepclasseswithmembers class * {
+    @retrofit2.http.* <methods>;
+}
+-keep class okhttp3.** { *; }
+-dontwarn okhttp3.**
+
+# Hilt / Dagger
+-keep class dagger.hilt.** { *; }
+-keep class javax.inject.** { *; }
+-keep class * extends dagger.hilt.android.HiltAndroidApp
+-keepclasseswithmembers class * {
+    @dagger.hilt.android.AndroidEntryPoint <methods>;
+}
+
+# Kotlin Serialization
+-keepattributes *Annotation*, InnerClasses
+-dontnote kotlinx.serialization.AnnotationsKt
+-keepclassmembers class kotlinx.serialization.json.** {
+    *** Companion;
+}
+-keepclasseswithmembers class kotlinx.serialization.json.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+-keep @kotlinx.serialization.Serializable class * { *; }
+
+# Navigation3
+-keep class androidx.navigation3.** { *; }
+-keep @kotlinx.serialization.Serializable class * { *; }
+
+# Security Crypto / Biometric / WorkManager
+-keep class androidx.security.crypto.** { *; }
+-keep class androidx.biometric.** { *; }
+-keep class androidx.work.** { *; }
+
+# SQLCipher
+-keep class net.sqlcipher.** { *; }
+-keep class net.sqlcipher.database.** { *; }
+-dontwarn net.sqlcipher.**
+
+# PDFBox-Android
+-keep class com.tom_roush.pdfbox.** { *; }
+-dontwarn com.tom_roush.pdfbox.**
+
+# Compose / Material3 adaptive
+-keep class androidx.compose.** { *; }
+-keep class androidx.compose.material3.** { *; }
+
+# Keep enums (JobSource, WorkMode, etc.)
+-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+-keep enum com.example.aijobagent.domain.model.** { *; }
+
+# Fix for R8 stripping coroutines
+-keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
+-keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
+-dontwarn kotlinx.coroutines.**

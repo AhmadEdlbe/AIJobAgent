@@ -1,13 +1,22 @@
 package com.example.aijobagent.presentation.jobs
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
@@ -33,15 +42,31 @@ fun JobDetailScreen(
             Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = androidx.compose.ui.Alignment.Center) { Text("Job not found") }
             return@Scaffold
         }
+        val context = LocalContext.current
         Column(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(job.title, style = MaterialTheme.typography.headlineSmall)
             Text("${job.company} • ${job.location} • ${job.workMode.name}", style = MaterialTheme.typography.bodyMedium)
             Text("Source: ${job.source.name} | Seniority: ${job.seniority.name}", style = MaterialTheme.typography.labelMedium)
             Text("Salary: ${job.salaryMin?.let { "$${it}-${job.salaryMax} ${job.currency}" } ?: "Not disclosed"}", style = MaterialTheme.typography.bodyMedium)
-            Divider()
+            if (job.url.isNotBlank()) {
+                val annotated = buildAnnotatedString {
+                    withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, textDecoration = TextDecoration.Underline)) {
+                        append(job.url)
+                    }
+                    addStringAnnotation(tag = "URL", annotation = job.url, start = 0, end = job.url.length)
+                }
+                ClickableText(text = annotated, onClick = { offset ->
+                    annotated.getStringAnnotations("URL", offset, offset).firstOrNull()?.let {
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it.item)))
+                        } catch (_: Exception) {}
+                    }
+                }, style = MaterialTheme.typography.bodySmall)
+            }
+            HorizontalDivider()
             Text("Description", style = MaterialTheme.typography.titleMedium)
             Text(job.description, style = MaterialTheme.typography.bodyMedium)
-            Divider()
+            HorizontalDivider()
             Text("AI Matching", style = MaterialTheme.typography.titleMedium)
             LinearProgressIndicator(progress = { job.matchPercentage / 100f }, modifier = Modifier.fillMaxWidth())
             Text("Match Score: ${job.matchPercentage}%", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
@@ -51,7 +76,7 @@ fun JobDetailScreen(
             Text("Why not: ${job.whyNotMatches}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             Text("Matching skills: ${job.matchingSkills.joinToString(", ").ifEmpty { "None" }}")
             Text("Missing skills: ${job.missingSkills.joinToString(", ").ifEmpty { "None" }}")
-            Divider()
+            HorizontalDivider()
             // Workflow buttons
             when (state.application?.status?.name) {
                 "PENDING_APPROVAL" -> {
@@ -71,7 +96,21 @@ fun JobDetailScreen(
             }
             OutlinedButton(onClick = { onCoverLetter(job.id) }, modifier = Modifier.fillMaxWidth()) { Text("View/Edit Cover Letter") }
             OutlinedButton(onClick = { onInterview(job.id) }, modifier = Modifier.fillMaxWidth()) { Text("Interview Prep") }
-            Button(onClick = { /* open url */ }, modifier = Modifier.fillMaxWidth()) { Text("Open Original Posting") }
+            Button(
+                onClick = {
+                    if (job.url.isNotBlank()) {
+                        try {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(job.url)))
+                        } catch (_: Exception) {}
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = job.url.isNotBlank()
+            ) {
+                Icon(Icons.Default.OpenInBrowser, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Open Original Posting")
+            }
         }
     }
 }
